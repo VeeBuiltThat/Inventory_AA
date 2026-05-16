@@ -16,21 +16,51 @@ def _sumup_headers():
     return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
+def _sumup_raise(r):
+    """Raise with a human-readable message extracted from SumUp's error body."""
+    if not r.ok:
+        try:
+            body = r.json()
+            # SumUp returns either {message, error_code, param} or RFC-9457 {detail, title}
+            msg = (
+                body.get("message")
+                or body.get("detail")
+                or body.get("error_message")
+                or r.text
+            )
+            param = body.get("param", "")
+            code  = body.get("error_code", "")
+            detail = f"{msg}"
+            if param: detail += f" (field: {param})"
+            if code:  detail += f" [{code}]"
+        except Exception:
+            detail = r.text or f"HTTP {r.status_code}"
+        raise requests.HTTPError(f"SumUp {r.status_code}: {detail}", response=r)
+
+
 def sumup_create_checkout(amount: float, currency: str, description: str, reference: str) -> dict:
+    merchant_code = st.secrets.get("SUMUP_MERCHANT_CODE", "")
+    if not merchant_code:
+        raise ValueError(
+            "SUMUP_MERCHANT_CODE is missing from .streamlit/secrets.toml. "
+            "Find it in your SumUp dashboard under Settings → Business account."
+        )
     payload = {
         "checkout_reference": reference,
         "amount": round(amount, 2),
         "currency": currency,
+        "merchant_code": merchant_code,          # ← required field that was missing
         "description": description,
+        "hosted_checkout": {"enabled": True},    # ← get a hosted payment URL back
     }
     r = requests.post(f"{_SUMUP_BASE}/checkouts", json=payload, headers=_sumup_headers(), timeout=10)
-    r.raise_for_status()
+    _sumup_raise(r)
     return r.json()
 
 
 def sumup_get_checkout(checkout_id: str) -> dict:
     r = requests.get(f"{_SUMUP_BASE}/checkouts/{checkout_id}", headers=_sumup_headers(), timeout=10)
-    r.raise_for_status()
+    _sumup_raise(r)
     return r.json()
 
 
@@ -151,8 +181,14 @@ with st.sidebar:
     st.markdown(f"❌ Out of stock: {out_of_stock}")
     st.markdown(f"💰 Revenue: **€{total_revenue:.2f}**")
     st.markdown("---")
-    has_key = bool(st.secrets.get("SUMUP_API_KEY", ""))
-    st.markdown(f"**SumUp:** {'🟢 configured' if has_key else '🔴 no API key'}")
+    has_key  = bool(st.secrets.get("SUMUP_API_KEY", ""))
+    has_code = bool(st.secrets.get("SUMUP_MERCHANT_CODE", ""))
+    if has_key and has_code:
+        st.markdown("**SumUp:** 🟢 ready")
+    elif has_key and not has_code:
+        st.markdown("**SumUp:** 🟡 missing merchant code")
+    else:
+        st.markdown("**SumUp:** 🔴 not configured")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -404,8 +440,8 @@ elif page == "Sales / POS":   # matches the radio label exactly
                 if qty > chosen_product["stock"]:
                     st.error(f"Only {chosen_product['stock']} in stock!")
                 elif "Card" in payment:
-                    if not st.secrets.get("SUMUP_API_KEY", ""):
-                        st.error("No SUMUP_API_KEY in secrets. Add it to .streamlit/secrets.toml to use card payments.")
+                    if not st.secrets.get("SUMUP_API_KEY", "") or not st.secrets.get("SUMUP_MERCHANT_CODE", ""):
+                        st.error("SumUp not fully configured. Add both SUMUP_API_KEY and SUMUP_MERCHANT_CODE to .streamlit/secrets.toml")
                     else:
                         ref = f"AA-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
                         try:
