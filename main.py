@@ -304,59 +304,82 @@ elif page == "Sales / POS":   # matches the radio label exactly
     inv = st.session_state.inventory
     in_stock_products = [p for p in inv if p["stock"] > 0]
 
-    # ── SumUp pending banner ──────────────────────────────────────────────────
+    # ── SumUp pending banner — auto-polls every 3 s ───────────────────────────
     if st.session_state.sumup_pending:
+        import time
         p         = st.session_state.sumup_pending
         total_due = p["unit_price"] * p["qty"]
-        st.markdown(
-            f'<div class="card card-warning">'
-            f'<b>💳 Awaiting card payment</b> &nbsp;·&nbsp; '
-            f'{p["qty"]}× {p["product_name"]} &nbsp;·&nbsp; <b>€{total_due:.2f}</b><br>'
-            f'<small>Present your SumUp reader to the customer, then click Check below.</small>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        if p.get("checkout_url"):
-            st.markdown(f"[🔗 Open SumUp payment page]({p['checkout_url']})")
 
-        btn_check, btn_cancel = st.columns(2)
-        if btn_check.button("🔄 Check Payment Status", use_container_width=True):
-            try:
-                data   = sumup_get_checkout(p["checkout_id"])
-                status = data.get("status", "UNKNOWN").upper()
-                if status == "PAID":
-                    for prod in st.session_state.inventory:
-                        if prod["id"] == p["product_id"]:
-                            prod["stock"] = max(0, prod["stock"] - p["qty"])
-                            break
-                    st.session_state.sales.append({
-                        "id":                datetime.now().strftime("%Y%m%d%H%M%S%f"),
-                        "timestamp":         datetime.now().isoformat(),
-                        "product_id":        p["product_id"],
-                        "product_name":      p["product_name"],
-                        "category":          p["category"],
-                        "qty":               p["qty"],
-                        "unit_price":        p["unit_price"],
-                        "total":             total_due,
-                        "payment":           p["payment"],
-                        "sumup_checkout_id": p["checkout_id"],
-                    })
-                    save_all()
-                    st.session_state.sumup_pending = None
-                    st.success(f"✅ Payment confirmed! Sold {p['qty']}× {p['product_name']} for €{total_due:.2f}")
-                    st.rerun()
-                elif status in ("FAILED", "EXPIRED"):
-                    st.error(f"Payment {status}. Please try again.")
-                    st.session_state.sumup_pending = None
-                    st.rerun()
-                else:
-                    st.warning(f"Status: **{status}** — not yet complete. Try again in a moment.")
-            except Exception as e:
-                st.error(f"Could not reach SumUp: {e}")
+        # ── auto-poll: silently check status, resolve if done ─────────────────
+        _auto_error = None
+        try:
+            _data   = sumup_get_checkout(p["checkout_id"])
+            _status = _data.get("status", "UNKNOWN").upper()
+        except Exception as _e:
+            _data   = {}
+            _status = "UNKNOWN"
+            _auto_error = str(_e)
 
-        if btn_cancel.button("❌ Cancel Payment", use_container_width=True):
+        if _status == "PAID":
+            for prod in st.session_state.inventory:
+                if prod["id"] == p["product_id"]:
+                    prod["stock"] = max(0, prod["stock"] - p["qty"])
+                    break
+            st.session_state.sales.append({
+                "id":                datetime.now().strftime("%Y%m%d%H%M%S%f"),
+                "timestamp":         datetime.now().isoformat(),
+                "product_id":        p["product_id"],
+                "product_name":      p["product_name"],
+                "category":          p["category"],
+                "qty":               p["qty"],
+                "unit_price":        p["unit_price"],
+                "total":             total_due,
+                "payment":           p["payment"],
+                "sumup_checkout_id": p["checkout_id"],
+            })
+            save_all()
             st.session_state.sumup_pending = None
+            st.success(f"✅ Payment confirmed! Sold {p['qty']}× {p['product_name']} for €{total_due:.2f}")
             st.rerun()
+
+        elif _status in ("FAILED", "EXPIRED"):
+            st.session_state.sumup_pending = None
+            st.error(f"💳 Payment {_status}. Please try again.")
+            st.rerun()
+
+        else:
+            # Still pending — show animated banner + progress bar, then rerun
+            dot_cycle = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            tick = int(time.time()) % len(dot_cycle)
+            spinner = dot_cycle[tick]
+
+            st.markdown(
+                f'<div class="card card-warning">'
+                f'<b>{spinner} Waiting for card payment</b> &nbsp;·&nbsp; '
+                f'{p["qty"]}× {p["product_name"]} &nbsp;·&nbsp; <b>€{total_due:.2f}</b><br>'
+                f'<small style="color:rgba(255,255,255,0.55);">'
+                f'Auto-checking every 3 s &nbsp;·&nbsp; Status: <b>{_status}</b>'
+                f'{"&nbsp;·&nbsp; ⚠️ " + _auto_error if _auto_error else ""}'
+                f'</small></div>',
+                unsafe_allow_html=True,
+            )
+
+            if p.get("checkout_url"):
+                st.markdown(f"[🔗 Open SumUp payment page]({p['checkout_url']})")
+
+            # Progress bar counts down the 3-second wait visually
+            progress = st.progress(0, text="Next check in 3 s…")
+            for i in range(30):
+                time.sleep(0.1)
+                progress.progress(i + 1, text=f"Next check in {3 - (i + 1) // 10:.0f} s…")
+            progress.empty()
+
+            # Manual cancel still available
+            if st.button("❌ Cancel Payment", use_container_width=False):
+                st.session_state.sumup_pending = None
+                st.rerun()
+
+            st.rerun()  # triggers the next poll cycle
 
         st.markdown("---")
 
