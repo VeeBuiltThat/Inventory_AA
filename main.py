@@ -197,11 +197,14 @@ if page == "Inventory":
                     st.rerun()
 
     # ── Filters ───────────────────────────────────────────────────────────────
-    f1, f2 = st.columns([3, 1])
+    f1, f2, f3 = st.columns([3, 1, 1])
     search_q = f1.text_input("🔍 Search products", placeholder="Type a name...")
     filter_status = f2.selectbox("Filter by status", ["All", "In Stock", "Low Stock (≤3)", "Out of Stock"])
 
     inv = st.session_state.inventory
+    all_cats = sorted(set(p.get("category", "Other") for p in inv))
+    filter_cat = f3.selectbox("Filter by category", ["All"] + all_cats)
+
     displayed = [p for p in inv if search_q.lower() in p["name"].lower()]
     if filter_status == "In Stock":
         displayed = [p for p in displayed if p["stock"] > 3]
@@ -209,6 +212,23 @@ if page == "Inventory":
         displayed = [p for p in displayed if 0 < p["stock"] <= 3]
     elif filter_status == "Out of Stock":
         displayed = [p for p in displayed if p["stock"] == 0]
+    if filter_cat != "All":
+        displayed = [p for p in displayed if p.get("category", "Other") == filter_cat]
+
+    # ── Category stock summary ────────────────────────────────────────────────
+    cat_totals = defaultdict(int)
+    for p in inv:
+        cat_totals[p.get("category", "Other")] += p["stock"]
+    summary_cols = st.columns(len(cat_totals) or 1)
+    for i, (cat, total) in enumerate(sorted(cat_totals.items())):
+        summary_cols[i].markdown(
+            f'<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);'
+            f'border-radius:10px;padding:10px;text-align:center;margin-bottom:8px;">'
+            f'<div style="font-size:1.3rem;font-weight:800;color:#e94560;">{total}</div>'
+            f'<div style="font-size:0.75rem;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:1px;">{cat}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown(f"**{len(displayed)} product(s)**")
     st.markdown("")
