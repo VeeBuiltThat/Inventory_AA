@@ -2,10 +2,38 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import uuid
+import requests
 from datetime import datetime, date
 import plotly.express as px
 import plotly.graph_objects as go
 from collections import defaultdict
+
+# ── SumUp helpers ─────────────────────────────────────────────────────────────
+_SUMUP_BASE = "https://api.sumup.com/v0.1"
+
+
+def _sumup_headers():
+    key = st.secrets.get("SUMUP_API_KEY", "")
+    return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+
+
+def sumup_create_checkout(amount: float, currency: str, description: str, reference: str) -> dict:
+    payload = {
+        "checkout_reference": reference,
+        "amount": round(amount, 2),
+        "currency": currency,
+        "description": description,
+    }
+    r = requests.post(f"{_SUMUP_BASE}/checkouts", json=payload, headers=_sumup_headers(), timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def sumup_get_checkout(checkout_id: str) -> dict:
+    r = requests.get(f"{_SUMUP_BASE}/checkouts/{checkout_id}", headers=_sumup_headers(), timeout=10)
+    r.raise_for_status()
+    return r.json()
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -37,6 +65,8 @@ if "inventory" not in st.session_state:
     st.session_state.inventory = load_json(INVENTORY_FILE, [])
 if "sales" not in st.session_state:
     st.session_state.sales = load_json(SALES_FILE, [])
+if "sumup_pending" not in st.session_state:
+    st.session_state.sumup_pending = None
 
 
 def save_all():
@@ -323,7 +353,29 @@ elif page == "🛒 Sales / POS":
             if sell_btn:
                 if qty > chosen_product["stock"]:
                     st.error(f"Only {chosen_product['stock']} in stock!")
+                elif "Card" in payment:
+                    # ── SumUp: create checkout, wait for confirmation ──────────
+                    ref = f"AA-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                    try:
+                        checkout = sumup_create_checkout(
+                            unit_price * qty, "EUR",
+                            f"{qty}× {chosen_name}", ref,
+                        )
+                        st.session_state.sumup_pending = {
+                            "checkout_id": checkout["id"],
+                            "checkout_url": checkout.get("hosted_checkout_url") or checkout.get("checkout_url", ""),
+                            "product_id": chosen_product["id"],
+                            "product_name": chosen_name,
+                            "category": chosen_product.get("category", "Other"),
+                            "qty": qty,
+                            "unit_price": unit_price,
+                            "payment": payment,
+                        }
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"SumUp error: {e}")
                 else:
+                    # ── Cash: record immediately ───────────────────────────────
                     chosen_product["stock"] -= qty
                     st.session_state.sales.append({
                         "id": datetime.now().strftime("%Y%m%d%H%M%S%f"),
@@ -339,6 +391,62 @@ elif page == "🛒 Sales / POS":
                     save_all()
                     st.success(f"Sold {qty}× {chosen_name} for €{unit_price * qty:.2f} ({payment})")
                     st.rerun()
+
+    st.markdown("---")
+
+    # ── SumUp payment pending ─────────────────────────────────────────────────
+    if st.session_state.sumup_pending:
+        p = st.session_state.sumup_pending
+        total_due = p["unit_price"] * p["qty"]
+        st.markdown(
+            f'<div class="card card-accent" style="border-left-color:#f59e0b;">'
+            f'<b>💳 Awaiting card payment</b> &nbsp;·&nbsp; '
+            f'{p["qty"]}× {p["product_name"]} &nbsp;·&nbsp; <b>€{total_due:.2f}</b>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if p["checkout_url"]:
+            st.markdown(f"[🔗 Open SumUp payment page]({p['checkout_url']})", unsafe_allow_html=False)
+
+        btn_check, btn_cancel = st.columns(2)
+        if btn_check.button("🔄 Check Payment Status", use_container_width=True):
+            try:
+                data = sumup_get_checkout(p["checkout_id"])
+                status = data.get("status", "UNKNOWN").upper()
+                if status == "PAID":
+                    # Find product and deduct stock
+                    for prod in st.session_state.inventory:
+                        if prod["id"] == p["product_id"]:
+                            prod["stock"] = max(0, prod["stock"] - p["qty"])
+                            break
+                    st.session_state.sales.append({
+                        "id": datetime.now().strftime("%Y%m%d%H%M%S%f"),
+                        "timestamp": datetime.now().isoformat(),
+                        "product_id": p["product_id"],
+                        "product_name": p["product_name"],
+                        "category": p["category"],
+                        "qty": p["qty"],
+                        "unit_price": p["unit_price"],
+                        "total": total_due,
+                        "payment": p["payment"],
+                        "sumup_checkout_id": p["checkout_id"],
+                    })
+                    save_all()
+                    st.session_state.sumup_pending = None
+                    st.success(f"✅ Payment confirmed! Sold {p['qty']}× {p['product_name']} for €{total_due:.2f}")
+                    st.rerun()
+                elif status in ("FAILED", "EXPIRED"):
+                    st.error(f"Payment {status}. Please try again.")
+                    st.session_state.sumup_pending = None
+                    st.rerun()
+                else:
+                    st.warning(f"Status: **{status}** — payment not yet complete. Try again in a moment.")
+            except Exception as e:
+                st.error(f"Could not reach SumUp: {e}")
+
+        if btn_cancel.button("❌ Cancel Payment", use_container_width=True):
+            st.session_state.sumup_pending = None
+            st.rerun()
 
     st.markdown("---")
     st.subheader("Sales Log")

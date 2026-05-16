@@ -1,0 +1,6 @@
+.streamlit/secrets.toml
+inventory.json
+sales.json
+__pycache__/
+*.pyc
+.env
