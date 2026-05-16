@@ -9,7 +9,7 @@ from collections import defaultdict
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Artist Alley POS",
+    page_title="VeBuiltThat Stock",
     page_icon="🎨",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -145,11 +145,11 @@ h1, h2, h3 { color: #ffffff; }
 
 # ── Sidebar navigation ────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🎨 Artist Alley")
+    st.markdown("## VeeBuiltThat Stock")
     st.markdown("---")
     page = st.radio(
         "Navigate",
-        ["📦 Inventory", "🛒 Sales / POS", "📊 Analytics"],
+        ["Inventory", "Sales / POS", "Analytics"],
         label_visibility="collapsed",
     )
     st.markdown("---")
@@ -158,22 +158,22 @@ with st.sidebar:
     in_stock = sum(1 for p in inv if p["stock"] > 0)
     out_of_stock = sum(1 for p in inv if p["stock"] == 0)
     st.markdown(f"**Products:** {total_items}")
-    st.markdown(f"✅ In stock: {in_stock}")
-    st.markdown(f"❌ Out of stock: {out_of_stock}")
+    st.markdown(f"In stock: {in_stock}")
+    st.markdown(f"Out of stock: {out_of_stock}")
     sales = st.session_state.sales
     total_revenue = sum(s["total"] for s in sales)
-    st.markdown(f"💰 Revenue: **€{total_revenue:.2f}**")
+    st.markdown(f"Revenue: **€{total_revenue:.2f}**")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 — INVENTORY
 # ══════════════════════════════════════════════════════════════════════════════
-if page == "📦 Inventory":
+if page == "Inventory":
     st.markdown('<div class="page-title">Inventory</div>', unsafe_allow_html=True)
     st.markdown('<div class="page-subtitle">Manage your products, stock levels, and prices</div>', unsafe_allow_html=True)
 
     # ── Add new product ───────────────────────────────────────────────────────
-    with st.expander("➕ Add New Product", expanded=False):
+    with st.expander("Add New Product", expanded=False):
         with st.form("add_product_form", clear_on_submit=True):
             c1, c2, c3, c4 = st.columns([3, 1, 1, 2])
             new_name  = c1.text_input("Product name", placeholder="e.g. Sticker Pack — Cats")
@@ -193,7 +193,7 @@ if page == "📦 Inventory":
                         "category": new_cat,
                     })
                     save_all()
-                    st.success(f"✅ '{new_name}' added!")
+                    st.success(f"'{new_name}' added!")
                     st.rerun()
 
     # ── Filters ───────────────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ elif page == "🛒 Sales / POS":
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("📋 Sales Log")
+    st.subheader("Sales Log")
 
     sales = st.session_state.sales
     if not sales:
@@ -414,7 +414,7 @@ elif page == "📊 Analytics":
 
         # ── Best sellers bar chart ────────────────────────────────────────────
         with c1:
-            st.markdown("#### 🏆 Best Sellers (by units)")
+            st.markdown("#### Best Sellers (by units)")
             by_prod = df.groupby("product_name")["qty"].sum().sort_values(ascending=False).reset_index()
             by_prod.columns = ["Product", "Units"]
             fig = px.bar(
@@ -431,7 +431,7 @@ elif page == "📊 Analytics":
 
         # ── Revenue by product ────────────────────────────────────────────────
         with c2:
-            st.markdown("#### 💰 Revenue by Product")
+            st.markdown("#### Revenue by Product")
             by_rev = df.groupby("product_name")["total"].sum().sort_values(ascending=False).reset_index()
             by_rev.columns = ["Product", "Revenue"]
             fig2 = px.pie(
@@ -448,7 +448,7 @@ elif page == "📊 Analytics":
             st.plotly_chart(fig2, use_container_width=True)
 
         # ── Revenue over time ─────────────────────────────────────────────────
-        st.markdown("#### 📅 Revenue Over Time")
+        st.markdown("#### Revenue Over Time")
         by_date = df.groupby("date")["total"].sum().reset_index()
         by_date.columns = ["Date", "Revenue"]
         fig3 = px.area(
@@ -482,7 +482,7 @@ elif page == "📊 Analytics":
             st.plotly_chart(fig4, use_container_width=True)
 
         with c4:
-            st.markdown("#### 📂 Revenue by Category")
+            st.markdown("#### Revenue by Category")
             cat_df = df.groupby("category")["total"].sum().sort_values(ascending=False).reset_index()
             cat_df.columns = ["Category", "Revenue"]
             fig5 = px.bar(
