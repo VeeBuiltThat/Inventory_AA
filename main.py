@@ -216,6 +216,39 @@ if page == "Inventory":
                 unsafe_allow_html=True,
             )
 
+    # ── Export buttons ────────────────────────────────────────────────────────
+    ex1, ex2, ex3 = st.columns([2, 2, 4])
+
+    # Export ALL products (ignores current filter)
+    if inv:
+        all_csv = pd.DataFrame([{
+            "Name": p["name"], "Category": p.get("category", "Other"),
+            "Price (€)": p["price"], "Stock": p["stock"],
+            "Status": "Out of Stock" if p["stock"] == 0 else ("Low Stock" if p["stock"] <= 3 else "In Stock"),
+        } for p in inv]).to_csv(index=False).encode("utf-8")
+        ex1.download_button(
+            "⬇️ Export All Products",
+            data=all_csv,
+            file_name=f"inventory_all_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+    # Export currently filtered view
+    if displayed:
+        filtered_csv = pd.DataFrame([{
+            "Name": p["name"], "Category": p.get("category", "Other"),
+            "Price (€)": p["price"], "Stock": p["stock"],
+            "Status": "Out of Stock" if p["stock"] == 0 else ("Low Stock" if p["stock"] <= 3 else "In Stock"),
+        } for p in displayed]).to_csv(index=False).encode("utf-8")
+        ex2.download_button(
+            "⬇️ Export Filtered View",
+            data=filtered_csv,
+            file_name=f"inventory_filtered_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
     st.markdown(f"**{len(displayed)} product(s)**")
 
     if not displayed:
@@ -421,7 +454,25 @@ elif page == "Sales / POS":   # matches the radio label exactly
         } for s in recent])
         st.dataframe(df_log, use_container_width=True, hide_index=True)
 
-        if st.button("↩️ Undo Last Sale"):
+        # Export full sales log
+        sales_csv = pd.DataFrame([{
+            "Time": s["timestamp"][:19].replace("T", " "),
+            "Product": s["product_name"],
+            "Category": s.get("category", ""),
+            "Qty": s["qty"],
+            "Unit (€)": s["unit_price"],
+            "Total (€)": s["total"],
+            "Payment": s["payment"],
+        } for s in sorted(sales, key=lambda x: x["timestamp"], reverse=True)]).to_csv(index=False).encode("utf-8")
+        sc1, sc2 = st.columns([2, 4])
+        sc1.download_button(
+            "⬇️ Export Sales Log",
+            data=sales_csv,
+            file_name=f"sales_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+        if sc2.button("↩️ Undo Last Sale"):
             last = st.session_state.sales.pop()
             for p in st.session_state.inventory:
                 if p["id"] == last["product_id"]:
