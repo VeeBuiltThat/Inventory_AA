@@ -179,7 +179,7 @@ with st.sidebar:
     st.markdown("---")
     page = st.radio(
         "Navigate",
-        ["Inventory", "Sales / POS", "Analytics"],
+        ["Inventory", "🛒 Sales / POS", "📊 Analytics"],
         label_visibility="collapsed",
     )
     st.markdown("---")
