@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import os
 import requests
+import base64
 from datetime import datetime
 import plotly.express as px
 from collections import defaultdict
@@ -167,6 +168,7 @@ h1, h2, h3 { color: #ffffff; }
 .stDataFrame { border-radius: 12px; overflow: hidden; }
 .page-title    { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.2rem; }
 .page-subtitle { color: rgba(255,255,255,0.5); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.badge-cat { background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.4); color: #e94560; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -249,17 +251,21 @@ if page == "Inventory":
             new_price = c2.number_input("Price (€)", min_value=0.0, step=0.5, format="%.2f")
             new_stock = c3.number_input("Stock qty", min_value=0, step=1)
             new_cat   = c4.selectbox("Category", ["Stickers", "Print A4", "Print A5", "Print A6", "Charms", "Keychains", "Badges", "Cards", "Bookmarks", "Magnets", "Other"])
+            new_img_file = st.file_uploader("Product image (optional)", type=["png", "jpg", "jpeg", "webp"], key="new_product_img")
             if st.form_submit_button("Add Product", use_container_width=True):
                 if not new_name.strip():
                     st.error("Product name is required.")
                 else:
-                    st.session_state.inventory.append({
+                    new_product = {
                         "id": datetime.now().strftime("%Y%m%d%H%M%S%f"),
                         "name": new_name.strip(),
                         "price": new_price,
                         "stock": new_stock,
                         "category": new_cat,
-                    })
+                    }
+                    if new_img_file:
+                        new_product["image"] = base64.b64encode(new_img_file.read()).decode()
+                    st.session_state.inventory.append(new_product)
                     save_all()
                     st.success(f"✅ '{new_name}' added!")
                     st.rerun()
@@ -336,7 +342,15 @@ if page == "Inventory":
     else:
         for product in displayed:
             st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
-            col_name, col_cat, col_price, col_stock, col_actions = st.columns([3, 1.5, 1, 1.5, 3])
+            col_img, col_name, col_cat, col_price, col_stock, col_actions = st.columns([1, 2.5, 1.5, 1, 1.5, 3])
+            if product.get("image"):
+                col_img.image(base64.b64decode(product["image"]), use_container_width=True)
+            else:
+                col_img.markdown(
+                    '<div style="background:rgba(255,255,255,0.05);border-radius:8px;'
+                    'text-align:center;padding:10px;font-size:1.4rem;">🖼️</div>',
+                    unsafe_allow_html=True,
+                )
 
             if product["stock"] == 0:
                 badge = '<span class="badge-out">Out of Stock</span>'
@@ -367,8 +381,13 @@ if page == "Inventory":
                 ec1, ec2, ec3 = st.columns(3)
                 new_q = ec1.number_input("Set stock to", min_value=0, value=product["stock"], key=f"restock_{pid}")
                 new_p = ec2.number_input("Set price (€)", min_value=0.0, value=product["price"], step=0.5, format="%.2f", key=f"price_{pid}")
+                new_img = st.file_uploader("Update product image", type=["png", "jpg", "jpeg", "webp"], key=f"img_{pid}")
                 if ec3.button("Apply", key=f"apply_{pid}"):
-                    product["stock"] = new_q; product["price"] = new_p; save_all()
+                    product["stock"] = new_q
+                    product["price"] = new_p
+                    if new_img:
+                        product["image"] = base64.b64encode(new_img.read()).decode()
+                    save_all()
                     st.success("Updated!"); st.rerun()
 
             st.markdown("</div>", unsafe_allow_html=True)
@@ -467,13 +486,28 @@ elif page == "Sales / POS":   # matches the radio label exactly
     elif not in_stock_products:
         st.warning("No products in stock. Add stock in the Inventory page first.")
     else:
+        _sale_map = {p["name"]: p for p in in_stock_products}
+        _chosen_name = st.selectbox(
+            "Product",
+            list(_sale_map.keys()),
+            key="sale_product_preview",
+            format_func=lambda n: f"{n}  #{_sale_map[n].get('category', 'Other')}",
+        )
+        _preview = _sale_map[_chosen_name]
+        _prev_img_col, _prev_info_col = st.columns([1, 6])
+        if _preview.get("image"):
+            _prev_img_col.image(base64.b64decode(_preview["image"]), width=80)
+        _prev_info_col.markdown(
+            f'<span class="badge-cat">#{_preview.get("category", "Other")}</span>'
+            f' &nbsp; <b>€{_preview["price"]:.2f}</b> each &nbsp;·&nbsp; {_preview["stock"]} in stock',
+            unsafe_allow_html=True,
+        )
         with st.form("sale_form", clear_on_submit=True):
-            product_names  = {p["name"]: p for p in in_stock_products}
-            c1, c2, c3     = st.columns([3, 1, 1])
-            chosen_name    = c1.selectbox("Product", list(product_names.keys()))
+            c2, c3         = st.columns([1, 1])
             qty            = c2.number_input("Qty", min_value=1, step=1, value=1)
             payment        = c3.selectbox("Payment", ["💳 Card", "💵 Cash"])
-            chosen_product = product_names[chosen_name]
+            chosen_product = _sale_map[st.session_state.get("sale_product_preview", list(_sale_map.keys())[0])]
+            chosen_name    = chosen_product["name"]
             unit_price     = chosen_product["price"]
             st.markdown(f"**Unit price:** €{unit_price:.2f} &nbsp;|&nbsp; **Total:** €{unit_price * qty:.2f}")
 
