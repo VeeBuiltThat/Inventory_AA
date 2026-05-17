@@ -173,7 +173,7 @@ h1, h2, h3 { color: #ffffff; }
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 # NOTE: radio labels are plain strings — the if/elif checks below must match exactly.
 with st.sidebar:
-    st.image(".streamlit/pfp_vee.png", use_container_width=True)
+    st.image("assets/pfp_vee.png", use_container_width=True)
     st.markdown(
         "<div style='text-align:center;font-weight:800;font-size:1.05rem;"
         "margin-top:6px;margin-bottom:0;'>🎨 VeeBuiltThat Stock</div>",
@@ -233,7 +233,7 @@ with st.sidebar:
 
 
 # ── Banner ───────────────────────────────────────────────────────────────────
-st.image(".streamlit/banner_vee.png", use_container_width=True)
+st.image("assets/banner_vee.png", use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 — INVENTORY
