@@ -292,11 +292,10 @@ button[kind="primary"], .stButton > button[data-testid*="checkout"],
 }
 
 /* ── Bordered containers (st.container border=True) ── */
-div[data-testid="stVerticalBlockBorderWrapper"] > div > div {
-    border-color: rgba(192,164,100,0.25) !important;
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: rgba(192,164,100,0.3) !important;
     border-radius: 14px !important;
     background: rgba(80,20,30,0.18) !important;
-    padding: 4px 4px !important;
 }
 
 /* ── POS section title ── */
@@ -656,34 +655,44 @@ elif page == "Sales / POS":   # matches the radio label exactly
 
             st.rerun()  # triggers the next poll cycle
 
-        st.markdown("---")
+        st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
-    # ── Cart Builder ──────────────────────────────────────────────────────────
-    st.subheader("🛍️ Add to Cart")
+    # ── Cart Builder ──────────────────────────────────────────────────────────────────
+    st.markdown('<div class="pos-section-title">🛍️ Add to Cart</div>', unsafe_allow_html=True)
     if st.session_state.sumup_pending:
         st.info("Complete or cancel the pending card payment first.")
     elif not in_stock_products:
         st.warning("No products in stock. Add stock in the Inventory page first.")
     else:
-        _sale_map    = {p["name"]: p for p in in_stock_products}
-        ac1, ac2, ac3 = st.columns([3, 1, 1.5])
-        _chosen_name  = ac1.selectbox(
+        _sale_map = {p["name"]: p for p in in_stock_products}
+        ac1, ac2 = st.columns([4, 1])
+        _chosen_name = ac1.selectbox(
             "Product",
             list(_sale_map.keys()),
             key="sale_product_preview",
-            format_func=lambda n: f"{n}  #{_sale_map[n].get('category', 'Other')}",
+            format_func=lambda n: f"{n}  •  {_sale_map[n].get('category', 'Other')}",
         )
         _add_qty = ac2.number_input("Qty", min_value=1, step=1, value=1, key="cart_add_qty")
         _preview = _sale_map[_chosen_name]
-        _prev_img_col, _prev_info_col = st.columns([1, 6])
+        _prev_img_col, _prev_info_col = st.columns([1, 7])
         if _preview.get("image"):
-            _prev_img_col.image(base64.b64decode(_preview["image"]), width=80)
+            _prev_img_col.image(base64.b64decode(_preview["image"]), width=72)
+        else:
+            _prev_img_col.markdown(
+                '<div style="background:rgba(255,255,255,0.05);border-radius:8px;'
+                'text-align:center;padding:14px;font-size:1.4rem;">🖼️</div>',
+                unsafe_allow_html=True,
+            )
+        _stock_color = "#1db954" if _preview["stock"] > 3 else ("#f59e0b" if _preview["stock"] > 0 else "#8b2d3f")
         _prev_info_col.markdown(
+            f'<div style="padding-top:6px;">'
             f'<span class="badge-cat">#{_preview.get("category", "Other")}</span>'
-            f' &nbsp; <b>€{_preview["price"]:.2f}</b> each &nbsp;·&nbsp; {_preview["stock"]} in stock',
+            f'&nbsp;&nbsp;<span style="font-size:1.1rem;font-weight:800;color:#c0a464;">€{_preview["price"]:.2f}</span>'
+            f'&nbsp;&nbsp;<span style="font-size:0.82rem;color:{_stock_color};">&#x25cf; {_preview["stock"]} in stock</span>'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        if ac3.button("➕ Add to Cart", use_container_width=True, key="btn_add_cart"):
+        if st.button("➕ Add to Cart", use_container_width=True, key="btn_add_cart"):
             _in_cart = sum(i["qty"] for i in st.session_state.cart if i["product_id"] == _preview["id"])
             if _add_qty + _in_cart > _preview["stock"]:
                 st.error(f"Only {_preview['stock']} in stock ({_in_cart} already in cart).")
@@ -702,26 +711,25 @@ elif page == "Sales / POS":   # matches the radio label exactly
                     })
                 st.rerun()
 
-    st.markdown("---")
-    # ── Cart display + Checkout ───────────────────────────────────────────────
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    # ── Cart display + Checkout ────────────────────────────────────────────────────────────
     if st.session_state.cart:
-        st.subheader("🛒 Cart")
+        st.markdown('<div class="pos-section-title">🛍 Cart</div>', unsafe_allow_html=True)
         _cart_total = 0.0
         for _ci_idx, _ci in enumerate(st.session_state.cart):
             _line        = _ci["unit_price"] * _ci["qty"]
             _cart_total += _line
-            st.markdown('<div class="cart-row">', unsafe_allow_html=True)
             cc1, cc2, cc3, cc4 = st.columns([3.5, 1, 1.5, 0.7])
             cc1.markdown(
                 f'**{_ci["product_name"]}** &nbsp; <span class="badge-cat">#{_ci["category"]}</span>',
                 unsafe_allow_html=True,
             )
-            cc2.markdown(f'<span style="color:rgba(240,230,211,0.65);">×{_ci["qty"]}</span>', unsafe_allow_html=True)
+            cc2.markdown(f'<span style="color:rgba(240,230,211,0.5);">×{_ci["qty"]}</span>', unsafe_allow_html=True)
             cc3.markdown(f'<span style="font-weight:800;color:#c0a464;">€{_line:.2f}</span>', unsafe_allow_html=True)
             if cc4.button("🗑️", key=f"rm_cart_{_ci_idx}", help="Remove"):
                 st.session_state.cart.pop(_ci_idx)
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('<hr style="border:none;border-top:1px solid rgba(192,164,100,0.1);margin:2px 0;">', unsafe_allow_html=True)
         st.markdown(
             f'<div class="card card-accent" style="text-align:right;padding:18px 24px;margin-top:8px;">'
             f'<div style="font-size:0.8rem;color:rgba(240,230,211,0.55);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">{len(st.session_state.cart)} item(s)</div>'
