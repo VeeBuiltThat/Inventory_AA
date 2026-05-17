@@ -173,7 +173,12 @@ h1, h2, h3 { color: #ffffff; }
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 # NOTE: radio labels are plain strings — the if/elif checks below must match exactly.
 with st.sidebar:
-    st.markdown("## 🎨 VeeBuiltThat Stock")
+    st.image(".streamlit/pfp_vee.png", use_container_width=True)
+    st.markdown(
+        "<div style='text-align:center;font-weight:800;font-size:1.05rem;"
+        "margin-top:6px;margin-bottom:0;'>🎨 VeeBuiltThat Stock</div>",
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
     page = st.radio(
         "Navigate",
@@ -226,6 +231,9 @@ with st.sidebar:
     else:
         st.markdown("**SumUp:** 🔴 not configured")
 
+
+# ── Banner ───────────────────────────────────────────────────────────────────
+st.image(".streamlit/banner_vee.png", use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 — INVENTORY
