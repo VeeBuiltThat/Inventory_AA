@@ -107,6 +107,8 @@ if "sumup_pending" not in st.session_state:
     st.session_state.sumup_pending = None
 if "sumup_reader_id" not in st.session_state:
     st.session_state.sumup_reader_id = st.secrets.get("SUMUP_READER_ID", "")
+if "cart" not in st.session_state:
+    st.session_state.cart = []
 
 
 def save_all():
@@ -122,53 +124,53 @@ st.markdown("""
 html, body, [class*="css"] { font-family: 'Nunito', sans-serif; }
 
 .stApp {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    color: #e0e0f0;
+    background: linear-gradient(135deg, #1a080e 0%, #2d0d18 50%, #1f0a10 100%);
+    color: #f0e6d3;
 }
 section[data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.05) !important;
-    border-right: 1px solid rgba(255,255,255,0.1);
+    background: rgba(30,5,12,0.55) !important;
+    border-right: 1px solid rgba(192,164,100,0.15);
 }
 .card {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(80,20,30,0.25);
+    border: 1px solid rgba(192,164,100,0.15);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 16px;
     backdrop-filter: blur(10px);
 }
-.card-accent  { border-left: 4px solid #e94560; }
+.card-accent  { border-left: 4px solid #c0a464; }
 .card-warning { border-left: 4px solid #f59e0b; }
 
 .metric-tile {
-    background: rgba(233,69,96,0.15);
-    border: 1px solid rgba(233,69,96,0.3);
+    background: rgba(192,164,100,0.12);
+    border: 1px solid rgba(192,164,100,0.3);
     border-radius: 12px;
     padding: 18px;
     text-align: center;
 }
-.metric-tile .val { font-size: 2.2rem; font-weight: 800; color: #e94560; font-family: 'Space Mono', monospace; }
-.metric-tile .lbl { font-size: 0.8rem; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; }
+.metric-tile .val { font-size: 2.2rem; font-weight: 800; color: #c0a464; font-family: 'Space Mono', monospace; }
+.metric-tile .lbl { font-size: 0.8rem; color: rgba(240,230,211,0.6); text-transform: uppercase; letter-spacing: 1px; }
 
 .badge-ok  { background: #1db954; color: #000; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
 .badge-low { background: #f59e0b; color: #000; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
-.badge-out { background: #e94560; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
+.badge-out { background: #8b2d3f; color: #fff; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
 
-h1, h2, h3 { color: #ffffff; }
+h1, h2, h3 { color: #f0e6d3; }
 .stButton > button { border-radius: 10px; font-weight: 700; font-family: 'Nunito', sans-serif; }
 
 .stTextInput > div > div > input,
 .stNumberInput > div > div > input,
 .stSelectbox > div > div {
     background: rgba(255,255,255,0.08) !important;
-    color: #fff !important;
-    border-color: rgba(255,255,255,0.2) !important;
+    color: #f0e6d3 !important;
+    border-color: rgba(192,164,100,0.25) !important;
     border-radius: 10px !important;
 }
 .stDataFrame { border-radius: 12px; overflow: hidden; }
-.page-title    { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.2rem; }
-.page-subtitle { color: rgba(255,255,255,0.5); font-size: 0.9rem; margin-bottom: 1.5rem; }
-.badge-cat { background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.4); color: #e94560; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
+.page-title    { font-size: 2rem; font-weight: 800; color: #f0e6d3; margin-bottom: 0.2rem; }
+.page-subtitle { color: rgba(240,230,211,0.55); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.badge-cat { background: rgba(192,164,100,0.15); border: 1px solid rgba(192,164,100,0.4); color: #c0a464; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -296,7 +298,7 @@ if page == "Inventory":
             summary_cols[i].markdown(
                 f'<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);'
                 f'border-radius:10px;padding:10px;text-align:center;margin-bottom:8px;">'
-                f'<div style="font-size:1.3rem;font-weight:800;color:#e94560;">{total}</div>'
+                f'<div style="font-size:1.3rem;font-weight:800;color:#c0a464;">{total}</div>'
                 f'<div style="font-size:0.75rem;color:rgba(255,255,255,0.55);text-transform:uppercase;'
                 f'letter-spacing:1px;">{cat}</div></div>',
                 unsafe_allow_html=True,
@@ -406,13 +408,13 @@ elif page == "Sales / POS":   # matches the radio label exactly
     # ── SumUp pending banner — auto-polls every 3 s ───────────────────────────
     if st.session_state.sumup_pending:
         import time
-        p         = st.session_state.sumup_pending
-        total_due = p["unit_price"] * p["qty"]
+        _pend     = st.session_state.sumup_pending
+        total_due = _pend["total"]
 
         # ── auto-poll: silently check status, resolve if done ─────────────────
         _auto_error = None
         try:
-            _data   = sumup_get_checkout(p["checkout_id"])
+            _data   = sumup_get_checkout(_pend["checkout_id"])
             _status = _data.get("status", "UNKNOWN").upper()
         except Exception as _e:
             _data   = {}
@@ -420,25 +422,29 @@ elif page == "Sales / POS":   # matches the radio label exactly
             _auto_error = str(_e)
 
         if _status == "PAID":
-            for prod in st.session_state.inventory:
-                if prod["id"] == p["product_id"]:
-                    prod["stock"] = max(0, prod["stock"] - p["qty"])
-                    break
-            st.session_state.sales.append({
-                "id":                datetime.now().strftime("%Y%m%d%H%M%S%f"),
-                "timestamp":         datetime.now().isoformat(),
-                "product_id":        p["product_id"],
-                "product_name":      p["product_name"],
-                "category":          p["category"],
-                "qty":               p["qty"],
-                "unit_price":        p["unit_price"],
-                "total":             total_due,
-                "payment":           p["payment"],
-                "sumup_checkout_id": p["checkout_id"],
-            })
+            _now    = datetime.now()
+            _bid    = _now.strftime("%Y%m%d%H%M%S%f")
+            for _idx, _item in enumerate(_pend["cart"]):
+                for _prod in st.session_state.inventory:
+                    if _prod["id"] == _item["product_id"]:
+                        _prod["stock"] = max(0, _prod["stock"] - _item["qty"])
+                        break
+                st.session_state.sales.append({
+                    "id":                f"{_bid}_{_idx:02d}",
+                    "timestamp":         _now.isoformat(),
+                    "product_id":        _item["product_id"],
+                    "product_name":      _item["product_name"],
+                    "category":          _item["category"],
+                    "qty":               _item["qty"],
+                    "unit_price":        _item["unit_price"],
+                    "total":             _item["unit_price"] * _item["qty"],
+                    "payment":           _pend["payment"],
+                    "sumup_checkout_id": _pend["checkout_id"],
+                })
             save_all()
+            _n = len(_pend["cart"])
             st.session_state.sumup_pending = None
-            st.success(f"✅ Payment confirmed! Sold {p['qty']}× {p['product_name']} for €{total_due:.2f}")
+            st.success(f"✅ Payment confirmed! {_n} item(s) · €{total_due:.2f}")
             st.rerun()
 
         elif _status in ("FAILED", "EXPIRED"):
@@ -451,11 +457,12 @@ elif page == "Sales / POS":   # matches the radio label exactly
             dot_cycle = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
             tick = int(time.time()) % len(dot_cycle)
             spinner = dot_cycle[tick]
+            _item_summary = ", ".join(f'{i["qty"]}× {i["product_name"]}' for i in _pend["cart"])
 
             st.markdown(
                 f'<div class="card card-warning">'
                 f'<b>{spinner} Waiting for card payment on reader</b> &nbsp;·&nbsp; '
-                f'{p["qty"]}× {p["product_name"]} &nbsp;·&nbsp; <b>€{total_due:.2f}</b><br>'
+                f'{_item_summary} &nbsp;·&nbsp; <b>€{total_due:.2f}</b><br>'
                 f'<small style="color:rgba(255,255,255,0.55);">'
                 f'👆 Tap or insert card on the SumUp reader &nbsp;·&nbsp; Status: <b>{_status}</b>'
                 f'{"&nbsp;·&nbsp; ⚠️ " + _auto_error if _auto_error else ""}'
@@ -479,20 +486,22 @@ elif page == "Sales / POS":   # matches the radio label exactly
 
         st.markdown("---")
 
-    # ── Record a sale ─────────────────────────────────────────────────────────
-    st.subheader("🛍️ Record a Sale")
+    # ── Cart Builder ──────────────────────────────────────────────────────────
+    st.subheader("🛍️ Add to Cart")
     if st.session_state.sumup_pending:
-        st.info("Complete or cancel the pending card payment before recording a new sale.")
+        st.info("Complete or cancel the pending card payment first.")
     elif not in_stock_products:
         st.warning("No products in stock. Add stock in the Inventory page first.")
     else:
-        _sale_map = {p["name"]: p for p in in_stock_products}
-        _chosen_name = st.selectbox(
+        _sale_map    = {p["name"]: p for p in in_stock_products}
+        ac1, ac2, ac3 = st.columns([3, 1, 1.5])
+        _chosen_name  = ac1.selectbox(
             "Product",
             list(_sale_map.keys()),
             key="sale_product_preview",
             format_func=lambda n: f"{n}  #{_sale_map[n].get('category', 'Other')}",
         )
+        _add_qty = ac2.number_input("Qty", min_value=1, step=1, value=1, key="cart_add_qty")
         _preview = _sale_map[_chosen_name]
         _prev_img_col, _prev_info_col = st.columns([1, 6])
         if _preview.get("image"):
@@ -502,61 +511,107 @@ elif page == "Sales / POS":   # matches the radio label exactly
             f' &nbsp; <b>€{_preview["price"]:.2f}</b> each &nbsp;·&nbsp; {_preview["stock"]} in stock',
             unsafe_allow_html=True,
         )
-        with st.form("sale_form", clear_on_submit=True):
-            c2, c3         = st.columns([1, 1])
-            qty            = c2.number_input("Qty", min_value=1, step=1, value=1)
-            payment        = c3.selectbox("Payment", ["💳 Card", "💵 Cash"])
-            chosen_product = _sale_map[st.session_state.get("sale_product_preview", list(_sale_map.keys())[0])]
-            chosen_name    = chosen_product["name"]
-            unit_price     = chosen_product["price"]
-            st.markdown(f"**Unit price:** €{unit_price:.2f} &nbsp;|&nbsp; **Total:** €{unit_price * qty:.2f}")
+        if ac3.button("➕ Add to Cart", use_container_width=True, key="btn_add_cart"):
+            _in_cart = sum(i["qty"] for i in st.session_state.cart if i["product_id"] == _preview["id"])
+            if _add_qty + _in_cart > _preview["stock"]:
+                st.error(f"Only {_preview['stock']} in stock ({_in_cart} already in cart).")
+            else:
+                for _ci in st.session_state.cart:
+                    if _ci["product_id"] == _preview["id"]:
+                        _ci["qty"] += _add_qty
+                        break
+                else:
+                    st.session_state.cart.append({
+                        "product_id":   _preview["id"],
+                        "product_name": _preview["name"],
+                        "category":     _preview.get("category", "Other"),
+                        "qty":          _add_qty,
+                        "unit_price":   _preview["price"],
+                    })
+                st.rerun()
 
-            if st.form_submit_button("✅ Record Sale", use_container_width=True):
-                if qty > chosen_product["stock"]:
-                    st.error(f"Only {chosen_product['stock']} in stock!")
-                elif "Card" in payment:
+    st.markdown("---")
+    # ── Cart display + Checkout ───────────────────────────────────────────────
+    if st.session_state.cart:
+        st.subheader("🛒 Cart")
+        _cart_total = 0.0
+        for _ci_idx, _ci in enumerate(st.session_state.cart):
+            _line        = _ci["unit_price"] * _ci["qty"]
+            _cart_total += _line
+            cc1, cc2, cc3, cc4 = st.columns([3.5, 1, 1.5, 0.7])
+            cc1.markdown(
+                f'**{_ci["product_name"]}** &nbsp; <span class="badge-cat">#{_ci["category"]}</span>',
+                unsafe_allow_html=True,
+            )
+            cc2.markdown(f'×{_ci["qty"]}')
+            cc3.markdown(f'**€{_line:.2f}**')
+            if cc4.button("🗑️", key=f"rm_cart_{_ci_idx}", help="Remove"):
+                st.session_state.cart.pop(_ci_idx)
+                st.rerun()
+        st.markdown(
+            f'<div class="card card-accent" style="text-align:right;padding:14px 20px;">'
+            f'<span style="font-size:1.4rem;font-weight:800;color:#c0a464;">Total: €{_cart_total:.2f}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        pay_col, clear_col, checkout_col = st.columns([2, 1.5, 2])
+        _payment = pay_col.selectbox("Payment method", ["💳 Card", "💵 Cash"], key="checkout_payment")
+        if clear_col.button("🗑️ Clear Cart", use_container_width=True, key="btn_clear_cart"):
+            st.session_state.cart = []
+            st.rerun()
+        if not st.session_state.sumup_pending:
+            if checkout_col.button("✅ Checkout", use_container_width=True, key="btn_checkout"):
+                if "Card" in _payment:
                     if not st.secrets.get("SUMUP_API_KEY", "") or not st.secrets.get("SUMUP_MERCHANT_CODE", ""):
-                        st.error("SumUp not fully configured. Add both SUMUP_API_KEY and SUMUP_MERCHANT_CODE to .streamlit/secrets.toml")
+                        st.error("SumUp not fully configured.")
                     elif not st.session_state.sumup_reader_id:
-                        st.error("No card reader selected. Use the '🔍 Find my reader' button in the sidebar first.")
+                        st.error("No card reader selected. Use '🔍 Find my reader' in the sidebar first.")
                     else:
-                        ref = f"AA-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                        _ref    = f"AA-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                        _nitems = sum(i["qty"] for i in st.session_state.cart)
+                        _desc   = (f"{_nitems} items" if len(st.session_state.cart) > 1
+                                   else f"{st.session_state.cart[0]['qty']}× {st.session_state.cart[0]['product_name']}")
                         try:
-                            checkout = sumup_reader_checkout(
+                            _co = sumup_reader_checkout(
                                 st.session_state.sumup_reader_id,
-                                unit_price * qty,
-                                "EUR",
-                                f"{qty}× {chosen_name}",
-                                ref,
+                                _cart_total, "EUR", _desc, _ref,
                             )
                             st.session_state.sumup_pending = {
-                                "checkout_id":  checkout["id"],
-                                "product_id":   chosen_product["id"],
-                                "product_name": chosen_name,
-                                "category":     chosen_product.get("category", "Other"),
-                                "qty":          qty,
-                                "unit_price":   unit_price,
-                                "payment":      payment,
+                                "checkout_id": _co["id"],
+                                "cart":        [dict(i) for i in st.session_state.cart],
+                                "payment":     _payment,
+                                "total":       _cart_total,
                             }
+                            st.session_state.cart = []
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"SumUp error: {e}")
+                        except Exception as _e:
+                            st.error(f"SumUp error: {_e}")
                 else:
-                    chosen_product["stock"] -= qty
-                    st.session_state.sales.append({
-                        "id":           datetime.now().strftime("%Y%m%d%H%M%S%f"),
-                        "timestamp":    datetime.now().isoformat(),
-                        "product_id":   chosen_product["id"],
-                        "product_name": chosen_product["name"],
-                        "category":     chosen_product["category"],
-                        "qty":          qty,
-                        "unit_price":   unit_price,
-                        "total":        unit_price * qty,
-                        "payment":      payment,
-                    })
+                    _now = datetime.now()
+                    _bid = _now.strftime("%Y%m%d%H%M%S%f")
+                    for _ci_idx, _ci in enumerate(st.session_state.cart):
+                        for _p in st.session_state.inventory:
+                            if _p["id"] == _ci["product_id"]:
+                                _p["stock"] = max(0, _p["stock"] - _ci["qty"])
+                                break
+                        st.session_state.sales.append({
+                            "id":           f"{_bid}_{_ci_idx:02d}",
+                            "timestamp":    _now.isoformat(),
+                            "product_id":   _ci["product_id"],
+                            "product_name": _ci["product_name"],
+                            "category":     _ci["category"],
+                            "qty":          _ci["qty"],
+                            "unit_price":   _ci["unit_price"],
+                            "total":        _ci["unit_price"] * _ci["qty"],
+                            "payment":      _payment,
+                        })
                     save_all()
-                    st.success(f"💵 Sold {qty}× {chosen_name} for €{unit_price * qty:.2f}")
+                    _total_paid = _cart_total
+                    st.session_state.cart = []
+                    st.success(f"💵 Sale recorded! Total: €{_total_paid:.2f}")
                     st.rerun()
+    else:
+        st.info("Cart is empty — add products above.")
 
     st.markdown("---")
     st.subheader("📋 Sales Log")
