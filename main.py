@@ -291,6 +291,26 @@ button[kind="primary"], .stButton > button[data-testid*="checkout"],
     border: none;
 }
 
+/* ── Bordered containers (st.container border=True) ── */
+div[data-testid="stVerticalBlockBorderWrapper"] > div > div {
+    border-color: rgba(192,164,100,0.25) !important;
+    border-radius: 14px !important;
+    background: rgba(80,20,30,0.18) !important;
+    padding: 4px 4px !important;
+}
+
+/* ── POS section title ── */
+.pos-section-title {
+    color: #c0a464;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin: 22px 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(192,164,100,0.2);
+}
+
 /* ── Nav radio pills ── */
 section[data-testid="stSidebar"] .stRadio > label > div:first-child { display: none; }
 section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
@@ -766,10 +786,15 @@ elif page == "Sales / POS":   # matches the radio label exactly
                     st.success(f"💵 Sale recorded! Total: €{_total_paid:.2f}")
                     st.rerun()
     else:
-        st.info("Cart is empty — add products above.")
+        st.markdown(
+            '<div style="text-align:center;padding:28px;color:rgba(240,230,211,0.4);font-size:1rem;">'
+            '🛍️ Your cart is empty — pick a product above to get started.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
-    st.markdown("---")
-    st.subheader("📋 Sales Log")
+    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.markdown('<div class="pos-section-title">📋 Sales Log</div>', unsafe_allow_html=True)
 
     sales = st.session_state.sales
     if not sales:
