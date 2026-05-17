@@ -38,22 +38,30 @@ def _sumup_raise(r):
         raise requests.HTTPError(f"SumUp {r.status_code}: {detail}", response=r)
 
 
-def sumup_create_checkout(amount: float, currency: str, description: str, reference: str) -> dict:
-    merchant_code = st.secrets.get("SUMUP_MERCHANT_CODE", "")
-    if not merchant_code:
-        raise ValueError(
-            "SUMUP_MERCHANT_CODE is missing from .streamlit/secrets.toml. "
-            "Find it in your SumUp dashboard under Settings → Business account."
-        )
+def sumup_list_readers() -> list:
+    mc = st.secrets.get("SUMUP_MERCHANT_CODE", "")
+    if not mc:
+        raise ValueError("SUMUP_MERCHANT_CODE missing from secrets")
+    r = requests.get(f"{_SUMUP_BASE}/merchants/{mc}/readers", headers=_sumup_headers(), timeout=10)
+    _sumup_raise(r)
+    data = r.json()
+    return data.get("items", data) if isinstance(data, dict) else data
+
+
+def sumup_reader_checkout(reader_id: str, amount: float, currency: str, description: str, reference: str) -> dict:
+    mc = st.secrets.get("SUMUP_MERCHANT_CODE", "")
+    if not mc:
+        raise ValueError("SUMUP_MERCHANT_CODE missing from secrets")
     payload = {
         "checkout_reference": reference,
         "amount": round(amount, 2),
         "currency": currency,
-        "merchant_code": merchant_code,          # ← required field that was missing
         "description": description,
-        "hosted_checkout": {"enabled": True},    # ← get a hosted payment URL back
     }
-    r = requests.post(f"{_SUMUP_BASE}/checkouts", json=payload, headers=_sumup_headers(), timeout=10)
+    r = requests.post(
+        f"{_SUMUP_BASE}/merchants/{mc}/readers/{reader_id}/checkouts",
+        json=payload, headers=_sumup_headers(), timeout=10,
+    )
     _sumup_raise(r)
     return r.json()
 
@@ -96,6 +104,8 @@ if "sales" not in st.session_state:
     st.session_state.sales = load_json(SALES_FILE, [])
 if "sumup_pending" not in st.session_state:
     st.session_state.sumup_pending = None
+if "sumup_reader_id" not in st.session_state:
+    st.session_state.sumup_reader_id = st.secrets.get("SUMUP_READER_ID", "")
 
 
 def save_all():
@@ -183,8 +193,34 @@ with st.sidebar:
     st.markdown("---")
     has_key  = bool(st.secrets.get("SUMUP_API_KEY", ""))
     has_code = bool(st.secrets.get("SUMUP_MERCHANT_CODE", ""))
-    if has_key and has_code:
-        st.markdown("**SumUp:** 🟢 ready")
+    has_reader = bool(st.session_state.sumup_reader_id)
+    if has_key and has_code and has_reader:
+        st.markdown("**SumUp:** 🟢 reader ready")
+    elif has_key and has_code and not has_reader:
+        st.markdown("**SumUp:** 🟡 no reader selected")
+        if st.button("🔍 Find my reader", use_container_width=True):
+            try:
+                readers = sumup_list_readers()
+                if not readers:
+                    st.warning("No readers found on this account.")
+                elif len(readers) == 1:
+                    st.session_state.sumup_reader_id = readers[0]["id"]
+                    st.success(f"Reader found: {readers[0].get('name', readers[0]['id'])}")
+                    st.rerun()
+                else:
+                    st.session_state["_reader_options"] = readers
+            except Exception as _e:
+                st.error(f"Could not list readers: {_e}")
+        # Let user pick if multiple readers were found
+        if st.session_state.get("_reader_options"):
+            _opts = st.session_state["_reader_options"]
+            _labels = [f"{r.get('name', 'Reader')} ({r['id']})" for r in _opts]
+            _pick = st.selectbox("Select reader", _labels, key="reader_pick_box")
+            if st.button("Use this reader", use_container_width=True):
+                _idx = _labels.index(_pick)
+                st.session_state.sumup_reader_id = _opts[_idx]["id"]
+                del st.session_state["_reader_options"]
+                st.rerun()
     elif has_key and not has_code:
         st.markdown("**SumUp:** 🟡 missing merchant code")
     else:
@@ -204,7 +240,7 @@ if page == "Inventory":
             new_name  = c1.text_input("Product name", placeholder="e.g. Sticker Pack — Cats")
             new_price = c2.number_input("Price (€)", min_value=0.0, step=0.5, format="%.2f")
             new_stock = c3.number_input("Stock qty", min_value=0, step=1)
-            new_cat   = c4.selectbox("Category", ["Stickers", "Prints", "Charms", "Keychains", "Badges", "Cards", "Other"])
+            new_cat   = c4.selectbox("Category", ["Stickers", "Print A4", "Print A5", "Print A6", "Charms", "Keychains", "Badges", "Cards", "Bookmarks", "Magnets", "Other"])
             if st.form_submit_button("Add Product", use_container_width=True):
                 if not new_name.strip():
                     st.error("Product name is required.")
@@ -391,17 +427,14 @@ elif page == "Sales / POS":   # matches the radio label exactly
 
             st.markdown(
                 f'<div class="card card-warning">'
-                f'<b>{spinner} Waiting for card payment</b> &nbsp;·&nbsp; '
+                f'<b>{spinner} Waiting for card payment on reader</b> &nbsp;·&nbsp; '
                 f'{p["qty"]}× {p["product_name"]} &nbsp;·&nbsp; <b>€{total_due:.2f}</b><br>'
                 f'<small style="color:rgba(255,255,255,0.55);">'
-                f'Auto-checking every 3 s &nbsp;·&nbsp; Status: <b>{_status}</b>'
+                f'👆 Tap or insert card on the SumUp reader &nbsp;·&nbsp; Status: <b>{_status}</b>'
                 f'{"&nbsp;·&nbsp; ⚠️ " + _auto_error if _auto_error else ""}'
                 f'</small></div>',
                 unsafe_allow_html=True,
             )
-
-            if p.get("checkout_url"):
-                st.markdown(f"[🔗 Open SumUp payment page]({p['checkout_url']})")
 
             # Progress bar counts down the 3-second wait visually
             progress = st.progress(0, text="Next check in 3 s…")
@@ -442,14 +475,20 @@ elif page == "Sales / POS":   # matches the radio label exactly
                 elif "Card" in payment:
                     if not st.secrets.get("SUMUP_API_KEY", "") or not st.secrets.get("SUMUP_MERCHANT_CODE", ""):
                         st.error("SumUp not fully configured. Add both SUMUP_API_KEY and SUMUP_MERCHANT_CODE to .streamlit/secrets.toml")
+                    elif not st.session_state.sumup_reader_id:
+                        st.error("No card reader selected. Use the '🔍 Find my reader' button in the sidebar first.")
                     else:
                         ref = f"AA-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
                         try:
-                            checkout     = sumup_create_checkout(unit_price * qty, "EUR", f"{qty}× {chosen_name}", ref)
-                            checkout_url = checkout.get("hosted_checkout_url") or checkout.get("checkout_url", "")
+                            checkout = sumup_reader_checkout(
+                                st.session_state.sumup_reader_id,
+                                unit_price * qty,
+                                "EUR",
+                                f"{qty}× {chosen_name}",
+                                ref,
+                            )
                             st.session_state.sumup_pending = {
                                 "checkout_id":  checkout["id"],
-                                "checkout_url": checkout_url,
                                 "product_id":   chosen_product["id"],
                                 "product_name": chosen_name,
                                 "category":     chosen_product.get("category", "Other"),
