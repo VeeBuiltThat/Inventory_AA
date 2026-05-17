@@ -171,6 +171,153 @@ h1, h2, h3 { color: #f0e6d3; }
 .page-title    { font-size: 2rem; font-weight: 800; color: #f0e6d3; margin-bottom: 0.2rem; }
 .page-subtitle { color: rgba(240,230,211,0.55); font-size: 0.9rem; margin-bottom: 1.5rem; }
 .badge-cat { background: rgba(192,164,100,0.15); border: 1px solid rgba(192,164,100,0.4); color: #c0a464; border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700; }
+
+/* ── Button styles ── */
+.stButton > button {
+    transition: all 0.18s ease;
+    border: 1px solid rgba(192,164,100,0.3);
+    background: rgba(192,164,100,0.1);
+    color: #f0e6d3;
+}
+.stButton > button:hover {
+    background: rgba(192,164,100,0.22) !important;
+    border-color: rgba(192,164,100,0.6) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(192,164,100,0.15);
+    color: #f0e6d3 !important;
+}
+.stButton > button:active { transform: translateY(0); }
+
+/* Primary CTA buttons (checkout, add to cart, add product) */
+button[kind="primary"], .stButton > button[data-testid*="checkout"],
+.stButton > button[data-testid*="cart"], .stButton > button[data-testid*="add"] {
+    background: linear-gradient(135deg, #c0a464 0%, #a8894a 100%) !important;
+    color: #1a080e !important;
+    border: none !important;
+    font-weight: 800 !important;
+}
+
+/* ── Card transitions ── */
+.card {
+    transition: box-shadow 0.18s ease, transform 0.18s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
+
+/* ── Sidebar stat tiles ── */
+.stat-tile {
+    background: rgba(192,164,100,0.08);
+    border: 1px solid rgba(192,164,100,0.2);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+.stat-tile .stat-val { font-weight: 800; color: #c0a464; font-family: 'Space Mono', monospace; font-size: 0.95rem; }
+.stat-tile .stat-lbl { color: rgba(240,230,211,0.65); }
+
+/* ── Status badge in sidebar ── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+/* ── Cart item rows ── */
+.cart-row {
+    background: rgba(80,20,30,0.2);
+    border: 1px solid rgba(192,164,100,0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    transition: background 0.15s ease;
+}
+.cart-row:hover { background: rgba(80,20,30,0.35); }
+
+/* ── Filter toolbar ── */
+.filter-bar {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(192,164,100,0.15);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+
+/* ── Alert/info styling ── */
+.stAlert > div {
+    border-radius: 12px !important;
+    border-left-width: 4px !important;
+}
+
+/* ── Dataframe styling ── */
+.stDataFrame > div {
+    border-radius: 12px;
+    border: 1px solid rgba(192,164,100,0.15);
+    overflow: hidden;
+}
+
+/* ── Selectbox / input focus ── */
+.stTextInput > div > div > input:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: rgba(192,164,100,0.6) !important;
+    box-shadow: 0 0 0 2px rgba(192,164,100,0.15) !important;
+}
+
+/* ── Expander polish ── */
+.streamlit-expanderHeader {
+    background: rgba(192,164,100,0.08) !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+}
+.streamlit-expanderHeader:hover {
+    background: rgba(192,164,100,0.15) !important;
+}
+
+/* ── Section divider ── */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(192,164,100,0.3), transparent);
+    margin: 20px 0;
+    border: none;
+}
+
+/* ── Nav radio pills ── */
+section[data-testid="stSidebar"] .stRadio > label > div:first-child { display: none; }
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+section[data-testid="stSidebar"] .stRadio label {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(192,164,100,0.12);
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 600;
+    width: 100%;
+}
+section[data-testid="stSidebar"] .stRadio label:hover {
+    background: rgba(192,164,100,0.12);
+    border-color: rgba(192,164,100,0.35);
+}
+section[data-testid="stSidebar"] .stRadio label[data-checked="true"],
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+    background: rgba(192,164,100,0.18);
+    border-color: rgba(192,164,100,0.5);
+    color: #c0a464;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -195,18 +342,21 @@ with st.sidebar:
     in_stock_cnt  = sum(1 for p in inv if p["stock"] > 0)
     out_of_stock  = sum(1 for p in inv if p["stock"] == 0)
     total_revenue = sum(s["total"] for s in st.session_state.sales)
-    st.markdown(f"**Products:** {total_items}")
-    st.markdown(f"✅ In stock: {in_stock_cnt}")
-    st.markdown(f"❌ Out of stock: {out_of_stock}")
-    st.markdown(f"💰 Revenue: **€{total_revenue:.2f}**")
+    st.markdown(
+        f'<div class="stat-tile"><span class="stat-lbl">📦 Products</span><span class="stat-val">{total_items}</span></div>'
+        f'<div class="stat-tile"><span class="stat-lbl">✅ In stock</span><span class="stat-val">{in_stock_cnt}</span></div>'
+        f'<div class="stat-tile"><span class="stat-lbl">❌ Out of stock</span><span class="stat-val">{out_of_stock}</span></div>'
+        f'<div class="stat-tile"><span class="stat-lbl">💰 Revenue</span><span class="stat-val">€{total_revenue:.2f}</span></div>',
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
     has_key  = bool(st.secrets.get("SUMUP_API_KEY", ""))
     has_code = bool(st.secrets.get("SUMUP_MERCHANT_CODE", ""))
     has_reader = bool(st.session_state.sumup_reader_id)
     if has_key and has_code and has_reader:
-        st.markdown("**SumUp:** 🟢 reader ready")
+        st.markdown('<div class="status-badge">🟢 SumUp ready</div>', unsafe_allow_html=True)
     elif has_key and has_code and not has_reader:
-        st.markdown("**SumUp:** 🟡 no reader selected")
+        st.markdown('<div class="status-badge">🟡 No reader selected</div>', unsafe_allow_html=True)
         if st.button("🔍 Find my reader", use_container_width=True):
             try:
                 readers = sumup_list_readers()
@@ -231,9 +381,9 @@ with st.sidebar:
                 del st.session_state["_reader_options"]
                 st.rerun()
     elif has_key and not has_code:
-        st.markdown("**SumUp:** 🟡 missing merchant code")
+        st.markdown('<div class="status-badge">🟡 Missing merchant code</div>', unsafe_allow_html=True)
     else:
-        st.markdown("**SumUp:** 🔴 not configured")
+        st.markdown('<div class="status-badge">🔴 SumUp not configured</div>', unsafe_allow_html=True)
 
 
 # ── Banner ───────────────────────────────────────────────────────────────────
@@ -272,11 +422,13 @@ if page == "Inventory":
                     st.success(f"✅ '{new_name}' added!")
                     st.rerun()
 
+    st.markdown('<div class="filter-bar">', unsafe_allow_html=True)
     f1, f2, f3 = st.columns([3, 1, 1])
     search_q      = f1.text_input("🔍 Search products", placeholder="Type a name...")
     filter_status = f2.selectbox("Status", ["All", "In Stock", "Low Stock (≤3)", "Out of Stock"])
     all_cats      = sorted(set(p.get("category", "Other") for p in st.session_state.inventory))
     filter_cat    = f3.selectbox("Category", ["All"] + all_cats)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     inv       = st.session_state.inventory
     displayed = [p for p in inv if search_q.lower() in p["name"].lower()]
@@ -538,19 +690,22 @@ elif page == "Sales / POS":   # matches the radio label exactly
         for _ci_idx, _ci in enumerate(st.session_state.cart):
             _line        = _ci["unit_price"] * _ci["qty"]
             _cart_total += _line
+            st.markdown('<div class="cart-row">', unsafe_allow_html=True)
             cc1, cc2, cc3, cc4 = st.columns([3.5, 1, 1.5, 0.7])
             cc1.markdown(
                 f'**{_ci["product_name"]}** &nbsp; <span class="badge-cat">#{_ci["category"]}</span>',
                 unsafe_allow_html=True,
             )
-            cc2.markdown(f'×{_ci["qty"]}')
-            cc3.markdown(f'**€{_line:.2f}**')
+            cc2.markdown(f'<span style="color:rgba(240,230,211,0.65);">×{_ci["qty"]}</span>', unsafe_allow_html=True)
+            cc3.markdown(f'<span style="font-weight:800;color:#c0a464;">€{_line:.2f}</span>', unsafe_allow_html=True)
             if cc4.button("🗑️", key=f"rm_cart_{_ci_idx}", help="Remove"):
                 st.session_state.cart.pop(_ci_idx)
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="card card-accent" style="text-align:right;padding:14px 20px;">'
-            f'<span style="font-size:1.4rem;font-weight:800;color:#c0a464;">Total: €{_cart_total:.2f}</span>'
+            f'<div class="card card-accent" style="text-align:right;padding:18px 24px;margin-top:8px;">'
+            f'<div style="font-size:0.8rem;color:rgba(240,230,211,0.55);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">{len(st.session_state.cart)} item(s)</div>'
+            f'<span style="font-size:1.7rem;font-weight:800;color:#c0a464;">Total: €{_cart_total:.2f}</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -729,7 +884,7 @@ elif page == "Analytics":   # matches the radio label exactly
             by_prod = df.groupby("product_name")["qty"].sum().sort_values(ascending=False).reset_index()
             by_prod.columns = ["Product", "Units"]
             fig = px.bar(by_prod, x="Units", y="Product", orientation="h",
-                         color="Units", color_continuous_scale=["#0f3460", "#e94560"],
+                         color="Units", color_continuous_scale=["#3f111f", "#c0a464"],
                          template="plotly_dark")
             fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                               coloraxis_showscale=False, margin=dict(l=0, r=0, t=10, b=0),
@@ -741,7 +896,7 @@ elif page == "Analytics":   # matches the radio label exactly
             by_rev = df.groupby("product_name")["total"].sum().sort_values(ascending=False).reset_index()
             by_rev.columns = ["Product", "Revenue"]
             fig2 = px.pie(by_rev, values="Revenue", names="Product",
-                          color_discrete_sequence=px.colors.sequential.Plasma_r,
+                          color_discrete_sequence=["#c0a464","#8b2d3f","#a8894a","#6b1e2e","#d4bc7a","#4a1520","#e8d4a0"],
                           template="plotly_dark", hole=0.4)
             fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)",
                                legend=dict(font=dict(color="#fff")),
@@ -752,8 +907,8 @@ elif page == "Analytics":   # matches the radio label exactly
         by_date = df.groupby("date")["total"].sum().reset_index()
         by_date.columns = ["Date", "Revenue"]
         fig3 = px.area(by_date, x="Date", y="Revenue",
-                       template="plotly_dark", color_discrete_sequence=["#e94560"])
-        fig3.update_traces(fillcolor="rgba(233,69,96,0.2)")
+                       template="plotly_dark", color_discrete_sequence=["#c0a464"])
+        fig3.update_traces(fillcolor="rgba(192,164,100,0.2)")
         fig3.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                            margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig3, use_container_width=True)
@@ -763,7 +918,7 @@ elif page == "Analytics":   # matches the radio label exactly
             st.markdown("#### 💳 Payment Method Breakdown")
             pay_df = df.groupby("payment").agg(Units=("qty", "sum"), Revenue=("total", "sum")).reset_index()
             fig4 = px.bar(pay_df, x="payment", y=["Units", "Revenue"], barmode="group",
-                          template="plotly_dark", color_discrete_sequence=["#e94560", "#0f3460"])
+                          template="plotly_dark", color_discrete_sequence=["#c0a464", "#8b2d3f"])
             fig4.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                                margin=dict(l=0, r=0, t=10, b=0),
                                legend=dict(font=dict(color="#fff")))
@@ -775,7 +930,7 @@ elif page == "Analytics":   # matches the radio label exactly
             cat_df.columns = ["Category", "Revenue"]
             fig5 = px.bar(cat_df, x="Category", y="Revenue",
                           template="plotly_dark", color="Revenue",
-                          color_continuous_scale=["#0f3460", "#e94560"])
+                          color_continuous_scale=["#3f111f", "#c0a464"])
             fig5.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                                coloraxis_showscale=False, margin=dict(l=0, r=0, t=10, b=0))
             st.plotly_chart(fig5, use_container_width=True)
