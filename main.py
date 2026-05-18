@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import json
-import os
+import mysql.connector
 import requests
 import base64
 from datetime import datetime
@@ -81,28 +80,164 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Persistent storage ────────────────────────────────────────────────────────
-INVENTORY_FILE = "inventory.json"
-SALES_FILE = "sales.json"
+# ── Database ──────────────────────────────────────────────────────────────────
+def _get_db_conn():
+    return mysql.connector.connect(
+        host=st.secrets["DB_HOST"],
+        port=int(st.secrets.get("DB_PORT", 3306)),
+        database=st.secrets["DB_NAME"],
+        user=st.secrets["DB_USER"],
+        password=st.secrets["DB_PASSWORD"],
+        connection_timeout=10,
+    )
 
 
-def load_json(path, default):
-    if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return default
+def _init_db():
+    conn = _get_db_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS inventory (
+            id VARCHAR(32) PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            stock INT NOT NULL DEFAULT 0,
+            category VARCHAR(100) DEFAULT 'Other',
+            image LONGTEXT DEFAULT NULL
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sales (
+            id VARCHAR(64) PRIMARY KEY,
+            timestamp VARCHAR(32),
+            product_id VARCHAR(32),
+            product_name VARCHAR(255),
+            category VARCHAR(100),
+            qty INT,
+            unit_price DECIMAL(10,2),
+            total DECIMAL(10,2),
+            payment VARCHAR(50),
+            sumup_checkout_id VARCHAR(255) DEFAULT NULL
+        )
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
-def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+def _load_inventory():
+    try:
+        conn = _get_db_conn()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT id, name, price, stock, category, image FROM inventory")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        result = []
+        for row in rows:
+            item = {
+                "id": row["id"],
+                "name": row["name"],
+                "price": float(row["price"]),
+                "stock": int(row["stock"]),
+                "category": row["category"] or "Other",
+            }
+            if row["image"]:
+                item["image"] = row["image"]
+            result.append(item)
+        return result
+    except Exception as _e:
+        st.warning(f"⚠️ Could not load inventory from database: {_e}")
+        return []
+
+
+def _load_sales():
+    try:
+        conn = _get_db_conn()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM sales")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        result = []
+        for row in rows:
+            sale = {
+                "id": row["id"],
+                "timestamp": row["timestamp"],
+                "product_id": row["product_id"] or "",
+                "product_name": row["product_name"] or "",
+                "category": row["category"] or "",
+                "qty": int(row["qty"]),
+                "unit_price": float(row["unit_price"]),
+                "total": float(row["total"]),
+                "payment": row["payment"] or "",
+            }
+            if row.get("sumup_checkout_id"):
+                sale["sumup_checkout_id"] = row["sumup_checkout_id"]
+            result.append(sale)
+        return result
+    except Exception as _e:
+        st.warning(f"⚠️ Could not load sales from database: {_e}")
+        return []
+
+
+def _save_inventory(inventory):
+    conn = _get_db_conn()
+    cur = conn.cursor()
+    if inventory:
+        ids = [p["id"] for p in inventory]
+        placeholders = ",".join(["%s"] * len(ids))
+        cur.execute(f"DELETE FROM inventory WHERE id NOT IN ({placeholders})", ids)
+    else:
+        cur.execute("DELETE FROM inventory")
+    for p in inventory:
+        cur.execute(
+            """
+            INSERT INTO inventory (id, name, price, stock, category, image)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                name=VALUES(name), price=VALUES(price), stock=VALUES(stock),
+                category=VALUES(category), image=VALUES(image)
+            """,
+            (p["id"], p["name"], p["price"], p["stock"], p.get("category", "Other"), p.get("image")),
+        )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def _save_sales(sales):
+    conn = _get_db_conn()
+    cur = conn.cursor()
+    for s in sales:
+        cur.execute(
+            """
+            INSERT IGNORE INTO sales
+                (id, timestamp, product_id, product_name, category, qty, unit_price, total, payment, sumup_checkout_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                s["id"], s["timestamp"], s.get("product_id", ""), s.get("product_name", ""),
+                s.get("category", ""), s["qty"], s["unit_price"], s["total"],
+                s["payment"], s.get("sumup_checkout_id"),
+            ),
+        )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+# Initialise tables on startup
+try:
+    _init_db()
+except Exception as _db_init_err:
+    st.warning(f"⚠️ Database init failed: {_db_init_err}. Data will not be persisted.")
 
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "inventory" not in st.session_state:
-    st.session_state.inventory = load_json(INVENTORY_FILE, [])
+    st.session_state.inventory = _load_inventory()
 if "sales" not in st.session_state:
-    st.session_state.sales = load_json(SALES_FILE, [])
+    st.session_state.sales = _load_sales()
 if "sumup_pending" not in st.session_state:
     st.session_state.sumup_pending = None
 if "sumup_reader_id" not in st.session_state:
@@ -112,8 +247,11 @@ if "cart" not in st.session_state:
 
 
 def save_all():
-    save_json(INVENTORY_FILE, st.session_state.inventory)
-    save_json(SALES_FILE, st.session_state.sales)
+    try:
+        _save_inventory(st.session_state.inventory)
+        _save_sales(st.session_state.sales)
+    except Exception as _e:
+        st.error(f"⚠️ Failed to save to database: {_e}")
 
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
